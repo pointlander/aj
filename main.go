@@ -16,13 +16,13 @@ import (
 	"gonum.org/v1/plot/vg"
 	"gonum.org/v1/plot/vg/draw"
 
-	"github.com/pointlander/datum/mnist"
+	"github.com/pointlander/datum/iris"
 	"github.com/pointlander/gradient/tf32"
 )
 
 const (
 	// Width is the width of the neural network
-	Width = mnist.Width * mnist.Height
+	Width = 7
 	// BatchSize is the size of a batch
 	BatchSize = 100
 )
@@ -32,17 +32,15 @@ func main() {
 
 	flag.Parse()
 
-	datum, err := mnist.Load()
+	datum, err := iris.Load()
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("images", len(datum.Train.Images))
+	fmt.Println("flowers", len(datum.Fisher))
 
 	set := tf32.NewSet()
-	set.Add("aw1", Width, 4*Width)
-	set.Add("ab1", 4*Width)
-	set.Add("aw2", 4*Width, 10)
-	set.Add("ab2", 10)
+	set.Add("aw1", Width, Width)
+	set.Add("ab1", Width)
 
 	for i := range set.Weights {
 		w := set.Weights[i]
@@ -63,86 +61,51 @@ func main() {
 		deltas = append(deltas, make([]float32, len(p.X)))
 	}
 
-	image := tf32.NewV(Width, BatchSize)
-	image.X = image.X[:cap(image.X)]
-	label := tf32.NewV(10, BatchSize)
-	label.X = label.X[:cap(label.X)]
-
-	indexes := make([]int, len(datum.Train.Images))
-	for i := range indexes {
-		indexes[i] = i
+	data := tf32.NewV(Width, len(datum.Fisher))
+	for _, flower := range datum.Fisher {
+		for _, value := range flower.Measures {
+			data.X = append(data.X, float32(value))
+		}
+		types := make([]float32, 3)
+		types[iris.Labels[flower.Label]] = 1
+		data.X = append(data.X, types...)
 	}
 
-	l1 := tf32.Sigmoid(tf32.Add(tf32.Mul(set.Get("aw1"), image.Meta()), set.Get("ab1")))
-	l2 := tf32.Sigmoid(tf32.Add(tf32.Mul(set.Get("aw2"), l1), set.Get("ab2")))
-	cost := tf32.Avg(tf32.Quadratic(label.Meta(), l2))
+	l1 := tf32.Add(tf32.Mul(set.Get("aw1"), data.Meta()), set.Get("ab1"))
+	cost := tf32.Avg(tf32.Quadratic(data.Meta(), l1))
 
-	iterations := 60
+	iterations := 128
 	points := make(plotter.XYs, 0, iterations)
+	start := time.Now()
 	for i := 0; i < iterations; i++ {
-		for i := range indexes {
-			j := i + rand.Intn(len(indexes)-i)
-			indexes[i], indexes[j] = indexes[j], indexes[i]
+		set.Zero()
+		data.Zero()
+
+		total := tf32.Gradient(cost).X[0]
+		norm := float32(0)
+		for _, p := range set.Weights {
+			for _, d := range p.D {
+				norm += d * d
+			}
+		}
+		norm = float32(math.Sqrt(float64(norm)))
+		scaling := float32(1)
+		if norm > 1 {
+			scaling = 1 / norm
 		}
 
-		total := float32(0.0)
-		start := time.Now()
-		for i := 0; i < len(indexes); i += BatchSize {
-			weights := set.ByName["aw1"]
-			weights.Drop = .5
-
-			weights = set.ByName["ab1"]
-			weights.Drop = .5
-
-			set.Zero()
-			image.Zero()
-			label.Zero()
-			index := 0
-			for j := 0; j < BatchSize; j++ {
-				for _, value := range datum.Train.Images[indexes[i+j]] {
-					image.X[index] = float32(value) / 255
-					index++
-				}
-			}
-			for j := range label.X {
-				label.X[j] = 0
-			}
-			index = 0
-			for j := 0; j < BatchSize; j++ {
-				label.X[index+int(datum.Train.Labels[indexes[i+j]])] = 1
-				index += 10
-			}
-
-			total += tf32.Gradient(cost).X[0]
-			norm := float32(0)
-			for _, p := range set.Weights {
-				for _, d := range p.D {
-					norm += d * d
-				}
-			}
-			norm = float32(math.Sqrt(float64(norm)))
-			scaling := float32(1)
-			if norm > 1 {
-				scaling = 1 / norm
-			}
-
-			alpha, eta := float32(.3), float32(.3)
-			for k, p := range set.Weights {
-				for l, d := range p.D {
-					deltas[k][l] = alpha*deltas[k][l] - eta*d*scaling
-					p.X[l] += deltas[k][l]
-				}
-			}
-
-			if i%1000 == 0 {
-				fmt.Print(".")
+		alpha, eta := float32(.3), float32(.3)
+		for k, p := range set.Weights {
+			for l, d := range p.D {
+				deltas[k][l] = alpha*deltas[k][l] - eta*d*scaling
+				p.X[l] += deltas[k][l]
 			}
 		}
 
-		fmt.Println("")
 		points = append(points, plotter.XY{X: float64(i), Y: float64(total)})
-		fmt.Println(i, total, time.Now().Sub(start))
+		fmt.Println(i, total)
 	}
+	fmt.Println(time.Now().Sub(start))
 
 	p := plot.New()
 
