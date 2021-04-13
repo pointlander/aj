@@ -67,9 +67,13 @@ func main() {
 			data.X = append(data.X, float32(value))
 		}
 		types := make([]float32, 3)
-		types[iris.Labels[flower.Label]] = 1
+		//types[iris.Labels[flower.Label]] = 1
+		fmt.Println(flower.Label)
+		types[rand.Intn(3)] = 1
 		data.X = append(data.X, types...)
 	}
+	deltas = append(deltas, make([]float32, len(data.X)))
+	last := len(deltas) - 1
 
 	l1 := tf32.Add(tf32.Mul(set.Get("aw1"), data.Meta()), set.Get("ab1"))
 	cost := tf32.Avg(tf32.Quadratic(data.Meta(), l1))
@@ -88,6 +92,13 @@ func main() {
 				norm += d * d
 			}
 		}
+		for j := 0; j < len(data.D); j += Width {
+			for k := 4; k < 7; k++ {
+				d := data.D[j+k]
+				norm += d * d
+			}
+		}
+
 		norm = float32(math.Sqrt(float64(norm)))
 		scaling := float32(1)
 		if norm > 1 {
@@ -99,6 +110,14 @@ func main() {
 			for l, d := range p.D {
 				deltas[k][l] = alpha*deltas[k][l] - eta*d*scaling
 				p.X[l] += deltas[k][l]
+			}
+		}
+		for j := 0; j < len(data.D); j += Width {
+			for k := 4; k < 7; k++ {
+				index := j + k
+				d := data.D[index]
+				deltas[last][index] = alpha*deltas[last][index] - eta*d*scaling
+				data.X[index] += deltas[last][index]
 			}
 		}
 
@@ -124,5 +143,16 @@ func main() {
 	err = p.Save(8*vg.Inch, 8*vg.Inch, "epochs.png")
 	if err != nil {
 		panic(err)
+	}
+
+	for i := 0; i < len(data.X); i += Width {
+		index, max := 0, float32(0.0)
+		for j := 4; j < 7; j++ {
+			d := data.X[i+j]
+			if d > max {
+				index, max = j-4, d
+			}
+		}
+		fmt.Printf("%d\n", index)
 	}
 }
