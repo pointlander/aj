@@ -22,9 +22,7 @@ import (
 
 const (
 	// Width is the width of the neural network
-	Width = 7
-	// BatchSize is the size of a batch
-	BatchSize = 100
+	Width = 5
 )
 
 func main() {
@@ -66,13 +64,11 @@ func main() {
 		for _, value := range flower.Measures {
 			data.X = append(data.X, float32(value))
 		}
-		types := make([]float32, 3)
 		//types[iris.Labels[flower.Label]] = 1
 		fmt.Println(flower.Label)
-		types[rand.Intn(3)] = 1
-		data.X = append(data.X, types...)
+		data.X = append(data.X, 2*rand.Float32()-1)
 	}
-	deltas = append(deltas, make([]float32, len(data.X)))
+	deltas = append(deltas, make([]float32, len(data.X)/Width))
 	last := len(deltas) - 1
 
 	l1 := tf32.Add(tf32.Mul(set.Get("aw1"), data.Meta()), set.Get("ab1"))
@@ -93,10 +89,8 @@ func main() {
 			}
 		}
 		for j := 0; j < len(data.D); j += Width {
-			for k := 4; k < 7; k++ {
-				d := data.D[j+k]
-				norm += d * d
-			}
+			d := data.D[j+4]
+			norm += d * d
 		}
 
 		norm = float32(math.Sqrt(float64(norm)))
@@ -113,12 +107,10 @@ func main() {
 			}
 		}
 		for j := 0; j < len(data.D); j += Width {
-			for k := 4; k < 7; k++ {
-				index := j + k
-				d := data.D[index]
-				deltas[last][index] = alpha*deltas[last][index] - eta*d*scaling
-				data.X[index] += deltas[last][index]
-			}
+			index := i + 4
+			d := data.D[index]
+			deltas[last][index] = alpha*deltas[last][index] - eta*d*scaling
+			data.X[index] += deltas[last][index]
 		}
 
 		points = append(points, plotter.XY{X: float64(i), Y: float64(total)})
@@ -146,13 +138,6 @@ func main() {
 	}
 
 	for i := 0; i < len(data.X); i += Width {
-		index, max := 0, float32(0.0)
-		for j := 4; j < 7; j++ {
-			d := data.X[i+j]
-			if d > max {
-				index, max = j-4, d
-			}
-		}
-		fmt.Printf("%d\n", index)
+		fmt.Printf("%f\n", data.X[i+4])
 	}
 }
