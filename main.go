@@ -106,11 +106,13 @@ func main() {
 				p.X[l] += deltas[k][l]
 			}
 		}
+		k := 0
 		for j := 0; j < len(data.D); j += Width {
-			index := i + 4
+			index := j + 4
 			d := data.D[index]
-			deltas[last][index] = alpha*deltas[last][index] - eta*d*scaling
-			data.X[index] += deltas[last][index]
+			deltas[last][k] = alpha*deltas[last][k] - eta*d*scaling
+			data.X[index] += deltas[last][k]
+			k++
 		}
 
 		points = append(points, plotter.XY{X: float64(i), Y: float64(total)})
