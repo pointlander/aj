@@ -22,7 +22,7 @@ import (
 
 const (
 	// Width is the width of the neural network
-	Width = 5
+	Width = 4
 )
 
 func main() {
@@ -64,17 +64,12 @@ func main() {
 		for _, value := range flower.Measures {
 			data.X = append(data.X, float32(value))
 		}
-		//types[iris.Labels[flower.Label]] = 1
-		fmt.Println(flower.Label)
-		data.X = append(data.X, 2*rand.Float32()-1)
 	}
-	deltas = append(deltas, make([]float32, len(data.X)/Width))
-	last := len(deltas) - 1
 
 	l1 := tf32.Add(tf32.Mul(set.Get("aw1"), data.Meta()), set.Get("ab1"))
 	cost := tf32.Avg(tf32.Quadratic(data.Meta(), l1))
 
-	iterations := 128
+	iterations := 256
 	points := make(plotter.XYs, 0, iterations)
 	start := time.Now()
 	for i := 0; i < iterations; i++ {
@@ -87,10 +82,6 @@ func main() {
 			for _, d := range p.D {
 				norm += d * d
 			}
-		}
-		for j := 0; j < len(data.D); j += Width {
-			d := data.D[j+4]
-			norm += d * d
 		}
 
 		norm = float32(math.Sqrt(float64(norm)))
@@ -105,14 +96,6 @@ func main() {
 				deltas[k][l] = alpha*deltas[k][l] - eta*d*scaling
 				p.X[l] += deltas[k][l]
 			}
-		}
-		k := 0
-		for j := 0; j < len(data.D); j += Width {
-			index := j + 4
-			d := data.D[index]
-			deltas[last][k] = alpha*deltas[last][k] - eta*d*scaling
-			data.X[index] += deltas[last][k]
-			k++
 		}
 
 		points = append(points, plotter.XY{X: float64(i), Y: float64(total)})
@@ -137,9 +120,5 @@ func main() {
 	err = p.Save(8*vg.Inch, 8*vg.Inch, "epochs.png")
 	if err != nil {
 		panic(err)
-	}
-
-	for i := 0; i < len(data.X); i += Width {
-		fmt.Printf("%f\n", data.X[i+4])
 	}
 }
