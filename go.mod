@@ -1,4 +1,4 @@
-module github.com/pointlander/neural_cluster
+module github.com/pointlander/aj
 
 go 1.15
 
