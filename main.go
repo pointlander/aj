@@ -124,18 +124,24 @@ func main() {
 		panic(err)
 	}
 
-	graph := pagerank.NewGraph64()
+	aw1 := set.ByName["aw1"]
+	graph := pagerank.NewGraph32()
 	for i := 0; i < Width; i++ {
 		for j := 0; j < Width; j++ {
-			graph.Link(uint64(i), uint64(j), float64(data.X[i*Width+j]))
+			weight := aw1.X[i*Width+j]
+			if weight < 0 {
+				graph.Link(uint64(j), uint64(i), -weight)
+			} else {
+				graph.Link(uint64(i), uint64(j), weight)
+			}
 		}
 	}
 	type Rank struct {
 		Node uint64
-		Rank float64
+		Rank float32
 	}
 	ranks := []Rank{}
-	graph.Rank(0.85, 0.000001, func(node uint64, rank float64) {
+	graph.Rank(0.85, 0.000001, func(node uint64, rank float32) {
 		ranks = append(ranks, Rank{
 			Node: node,
 			Rank: rank,
