@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"sort"
 	"time"
 
 	"gonum.org/v1/plot"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/pointlander/datum/iris"
 	"github.com/pointlander/gradient/tf32"
+	"github.com/pointlander/pagerank"
 )
 
 const (
@@ -120,5 +122,29 @@ func main() {
 	err = p.Save(8*vg.Inch, 8*vg.Inch, "epochs.png")
 	if err != nil {
 		panic(err)
+	}
+
+	graph := pagerank.NewGraph64()
+	for i := 0; i < Width; i++ {
+		for j := 0; j < Width; j++ {
+			graph.Link(uint64(i), uint64(j), float64(data.X[i*Width+j]))
+		}
+	}
+	type Rank struct {
+		Node uint64
+		Rank float64
+	}
+	ranks := []Rank{}
+	graph.Rank(0.85, 0.000001, func(node uint64, rank float64) {
+		ranks = append(ranks, Rank{
+			Node: node,
+			Rank: rank,
+		})
+	})
+	sort.Slice(ranks, func(i, j int) bool {
+		return ranks[i].Rank < ranks[j].Rank
+	})
+	for _, rank := range ranks {
+		fmt.Println(rank.Node, rank.Rank)
 	}
 }
