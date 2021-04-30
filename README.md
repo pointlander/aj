@@ -1,0 +1,2 @@
+# Auto-encoding adjacency matrix causality model with page rank
+An auto-encoding adjacency matrix is learned with gradient descent for the [iris dataset](https://archive.ics.uci.edu/ml/datasets/iris). The neural network is the form of: AX + B = X. Page rank is then applied to the adjacency matrix, and it is found that the [sepal](https://en.wikipedia.org/wiki/Sepal) length is the most important property of [irises](https://en.wikipedia.org/wiki/Iris_(plant)).
