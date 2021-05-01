@@ -64,7 +64,8 @@ func main() {
 			panic(err)
 		}
 		line, _ := reader.Read()
-		data := tf32.NewV(len(line)-1, 1568-1)
+		width, height := len(line)-1, 1568-1
+		data := tf32.NewV(width, height)
 		for line != nil {
 			for _, value := range line[1:] {
 				parsed := 0.0
@@ -79,13 +80,38 @@ func main() {
 			line, _ = reader.Read()
 		}
 
-		Process(headers, &data)
-	}
+		aw1 := Process(headers, &data)
 
+		type Factor struct {
+			Column int
+			Weight float32
+		}
+		factors := []Factor{}
+		for i := 0; i < width; i++ {
+			index := i*width + width - 1
+			factors = append(factors, Factor{
+				Column: i,
+				Weight: aw1.X[index],
+			})
+		}
+		sort.Slice(factors, func(i, j int) bool {
+			a, b := factors[i].Weight, factors[j].Weight
+			if a < 0 {
+				a = -a
+			}
+			if b < 0 {
+				b = -b
+			}
+			return a < b
+		})
+		for _, factor := range factors {
+			fmt.Println(factor.Column, factor.Weight)
+		}
+	}
 }
 
 // Process processes the data
-func Process(headers []string, data *tf32.V) {
+func Process(headers []string, data *tf32.V) *tf32.V {
 	rand.Seed(1)
 
 	width := data.S[0]
@@ -201,4 +227,6 @@ func Process(headers []string, data *tf32.V) {
 		sum += rank.Rank
 	}
 	fmt.Println(sum)
+
+	return aw1
 }
