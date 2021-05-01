@@ -22,25 +22,46 @@ import (
 	"github.com/pointlander/pagerank"
 )
 
-const (
-	// Width is the width of the neural network
-	Width = 4
-)
+// Mode is the mode to operate in
+var Mode = flag.String("mode", "iris", "operation mode")
 
 func main() {
-	rand.Seed(1)
-
 	flag.Parse()
 
-	datum, err := iris.Load()
-	if err != nil {
-		panic(err)
+	if *Mode == "iris" {
+		headers := []string{
+			"sepal length in cm",
+			"sepal width in cm",
+			"petal length in cm",
+			"petal width in cm",
+		}
+
+		datum, err := iris.Load()
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("flowers", len(datum.Fisher))
+		data := tf32.NewV(4, len(datum.Fisher))
+		for _, flower := range datum.Fisher {
+			for _, value := range flower.Measures {
+				data.X = append(data.X, float32(value))
+			}
+		}
+
+		Process(headers, &data)
 	}
-	fmt.Println("flowers", len(datum.Fisher))
+
+}
+
+// Process processes the data
+func Process(headers []string, data *tf32.V) {
+	rand.Seed(1)
+
+	width := data.S[0]
 
 	set := tf32.NewSet()
-	set.Add("aw1", Width, Width)
-	set.Add("ab1", Width)
+	set.Add("aw1", width, width)
+	set.Add("ab1", width)
 
 	for i := range set.Weights {
 		w := set.Weights[i]
@@ -59,13 +80,6 @@ func main() {
 	deltas := make([][]float32, 0, 8)
 	for _, p := range set.Weights {
 		deltas = append(deltas, make([]float32, len(p.X)))
-	}
-
-	data := tf32.NewV(Width, len(datum.Fisher))
-	for _, flower := range datum.Fisher {
-		for _, value := range flower.Measures {
-			data.X = append(data.X, float32(value))
-		}
 	}
 
 	l1 := tf32.Add(tf32.Mul(set.Get("aw1"), data.Meta()), set.Get("ab1"))
@@ -126,9 +140,9 @@ func main() {
 
 	aw1 := set.ByName["aw1"]
 	graph := pagerank.NewGraph32()
-	for i := 0; i < Width; i++ {
-		for j := 0; j < Width; j++ {
-			weight := aw1.X[i*Width+j]
+	for i := 0; i < width; i++ {
+		for j := 0; j < width; j++ {
+			weight := aw1.X[i*width+j]
 			if weight < 0 {
 				graph.Link(uint64(j), uint64(i), -weight)
 			} else {
@@ -150,7 +164,10 @@ func main() {
 	sort.Slice(ranks, func(i, j int) bool {
 		return ranks[i].Rank < ranks[j].Rank
 	})
+	sum := float32(0.0)
 	for _, rank := range ranks {
-		fmt.Println(rank.Node, rank.Rank)
+		fmt.Println(rank.Node, headers[rank.Node], rank.Rank)
+		sum += rank.Rank
 	}
+	fmt.Println(sum)
 }
