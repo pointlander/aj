@@ -5,11 +5,14 @@
 package main
 
 import (
+	"encoding/csv"
 	"flag"
 	"fmt"
 	"math"
 	"math/rand"
+	"os"
 	"sort"
+	"strconv"
 	"time"
 
 	"gonum.org/v1/plot"
@@ -46,6 +49,34 @@ func main() {
 			for _, value := range flower.Measures {
 				data.X = append(data.X, float32(value))
 			}
+		}
+
+		Process(headers, &data)
+	} else if *Mode == "fab" {
+		input, err := os.Open("uci-secom.csv")
+		if err != nil {
+			panic(err)
+		}
+		defer input.Close()
+		reader := csv.NewReader(input)
+		headers, err := reader.Read()
+		if err != nil {
+			panic(err)
+		}
+		line, _ := reader.Read()
+		data := tf32.NewV(len(line)-1, 1568-1)
+		for line != nil {
+			for _, value := range line[1:] {
+				parsed := 0.0
+				if value != "" {
+					parsed, err = strconv.ParseFloat(value, 32)
+					if err != nil {
+						panic(err)
+					}
+				}
+				data.X = append(data.X, float32(parsed))
+			}
+			line, _ = reader.Read()
 		}
 
 		Process(headers, &data)
