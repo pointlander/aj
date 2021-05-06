@@ -13,6 +13,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"gonum.org/v1/plot"
@@ -107,6 +108,38 @@ func main() {
 		for _, factor := range factors {
 			fmt.Println(factor.Column, factor.Weight)
 		}
+	} else if *Mode == "bee" {
+		input, err := os.Open("bee_data.csv")
+		if err != nil {
+			panic(err)
+		}
+		defer input.Close()
+		reader := csv.NewReader(input)
+		_, err = reader.Read()
+		if err != nil {
+			panic(err)
+		}
+		width, height := 50, 4
+		data := tf32.NewV(width, height)
+		line, err := reader.Read()
+		if err != nil {
+			panic(err)
+		}
+		headers, index := []string{}, 0
+		for line != nil {
+			if index < 50 {
+				headers = append(headers, line[5])
+				index++
+			}
+			parsed, err := strconv.ParseFloat(strings.ReplaceAll(line[19], ",", ""), 32)
+			if err != nil {
+				panic(err)
+			}
+			data.X = append(data.X, float32(parsed))
+			line, _ = reader.Read()
+		}
+
+		Process(headers, &data)
 	}
 }
 
