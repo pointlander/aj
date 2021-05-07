@@ -229,6 +229,24 @@ func Process(headers []string, data *tf32.V) *tf32.V {
 	}
 
 	aw1 := set.ByName["aw1"]
+
+	values := make(plotter.Values, 0, 1024)
+	for _, value := range aw1.X {
+		values = append(values, float64(value))
+	}
+
+	p = plot.New()
+	p.Title.Text = "Weight Histogram"
+	histogram, err := plotter.NewHist(values, 256)
+	if err != nil {
+		panic(err)
+	}
+	p.Add(histogram)
+	err = p.Save(8*vg.Inch, 8*vg.Inch, "weights_histogram.png")
+	if err != nil {
+		panic(err)
+	}
+
 	graph := pagerank.NewGraph32()
 	for i := 0; i < width; i++ {
 		for j := 0; j < width; j++ {
