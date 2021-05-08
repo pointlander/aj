@@ -143,6 +143,26 @@ func main() {
 	}
 }
 
+// Histogram generates a histogram of the weights
+func Histogram(name, file string, aw1 *tf32.V) {
+	values := make(plotter.Values, 0, 1024)
+	for _, value := range aw1.X {
+		values = append(values, float64(value))
+	}
+
+	p := plot.New()
+	p.Title.Text = name
+	histogram, err := plotter.NewHist(values, 256)
+	if err != nil {
+		panic(err)
+	}
+	p.Add(histogram)
+	err = p.Save(8*vg.Inch, 8*vg.Inch, file)
+	if err != nil {
+		panic(err)
+	}
+}
+
 // Process processes the data
 func Process(headers []string, data *tf32.V) *tf32.V {
 	rand.Seed(1)
@@ -152,6 +172,7 @@ func Process(headers []string, data *tf32.V) *tf32.V {
 	set := tf32.NewSet()
 	set.Add("aw1", width, width)
 	set.Add("ab1", width)
+	aw1 := set.ByName["aw1"]
 
 	for i := range set.Weights {
 		w := set.Weights[i]
@@ -162,10 +183,12 @@ func Process(headers []string, data *tf32.V) *tf32.V {
 		} else {
 			factor := float32(math.Sqrt(2 / float64(w.S[0])))
 			for i := 0; i < cap(w.X); i++ {
-				w.X = append(w.X, float32(rand.NormFloat64())*factor)
+				w.X = append(w.X, float32(rand.Float64()*2-1)*factor)
 			}
 		}
 	}
+
+	Histogram("Before Weight Histogram", "before_weights_histogram.png", aw1)
 
 	deltas := make([][]float32, 0, 8)
 	for _, p := range set.Weights {
@@ -228,24 +251,7 @@ func Process(headers []string, data *tf32.V) *tf32.V {
 		panic(err)
 	}
 
-	aw1 := set.ByName["aw1"]
-
-	values := make(plotter.Values, 0, 1024)
-	for _, value := range aw1.X {
-		values = append(values, float64(value))
-	}
-
-	p = plot.New()
-	p.Title.Text = "Weight Histogram"
-	histogram, err := plotter.NewHist(values, 256)
-	if err != nil {
-		panic(err)
-	}
-	p.Add(histogram)
-	err = p.Save(8*vg.Inch, 8*vg.Inch, "weights_histogram.png")
-	if err != nil {
-		panic(err)
-	}
+	Histogram("After Weight Histogram", "after_weights_histogram.png", aw1)
 
 	graph := pagerank.NewGraph32()
 	for i := 0; i < width; i++ {
