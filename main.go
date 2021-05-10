@@ -140,6 +140,51 @@ func main() {
 		}
 
 		Process(headers, &data)
+	} else if *Mode == "quantum" {
+		datum, err := iris.Load()
+		if err != nil {
+			panic(err)
+		}
+		min, max := make([]float64, 4), make([]float64, 4)
+		for i := range min {
+			min[i] = math.MaxFloat32
+		}
+		for _, flower := range datum.Fisher {
+			for i, value := range flower.Measures {
+				if value > max[i] {
+					max[i] = value
+				}
+				if value < min[i] {
+					min[i] = value
+				}
+			}
+		}
+		fmt.Println("max", max)
+		fmt.Println("min", min)
+		width, height := (1<<16)-1, 1
+		data := tf32.NewV(width, height)
+		data.X = data.X[:cap(data.X)]
+
+		for _, flower := range datum.Fisher {
+			var bucket uint16
+			for i, value := range flower.Measures {
+				value -= min[i]
+				value /= max[i] - min[i]
+				bucket <<= 4
+				bucket |= 1 << int(4*value)
+			}
+			data.X[bucket]++
+		}
+		headers := make([]string, 0, width)
+		for i, value := range data.X {
+			headers = append(headers, fmt.Sprintf("%d", i))
+			if value == 0 {
+				continue
+			}
+			fmt.Println(i, value)
+		}
+
+		Process(headers, &data)
 	}
 }
 
