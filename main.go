@@ -162,9 +162,8 @@ func main() {
 		fmt.Println("max", max)
 		fmt.Println("min", min)
 		width, height := (1<<16)-1, 1
-		data := tf32.NewV(width, height)
-		data.X = data.X[:cap(data.X)]
-
+		buckets := make([]int, width)
+		sum := 0.0
 		for _, flower := range datum.Fisher {
 			var bucket uint16
 			for i, value := range flower.Measures {
@@ -173,14 +172,25 @@ func main() {
 				bucket <<= 4
 				bucket |= 1 << int(4*value)
 			}
-			data.X[bucket]++
+			buckets[bucket]++
+			sum++
 		}
+		size, table := 0, make(map[int]int)
+		for i, value := range buckets {
+			if value != 0 {
+				table[i] = size
+				size++
+			}
+		}
+		width = size
+		data := tf32.NewV(width, height)
 		headers := make([]string, 0, width)
-		for i, value := range data.X {
-			headers = append(headers, fmt.Sprintf("%d", i))
+		for i, value := range buckets {
 			if value == 0 {
 				continue
 			}
+			headers = append(headers, fmt.Sprintf("%d", i))
+			data.X = append(data.X, float32(value)/float32(sum))
 			fmt.Println(i, value)
 		}
 
