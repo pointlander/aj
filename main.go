@@ -205,7 +205,7 @@ func main() {
 		sort.Slice(sorted, func(i, j int) bool {
 			return sorted[i] < sorted[j]
 		})
-		cutoff := sorted[0] + (sorted[len(sorted)-1]-sorted[0])*.885
+		cutoff := sorted[0] + (sorted[len(sorted)-1]-sorted[0])*.93
 		for i, value := range sorted {
 			if value >= cutoff {
 				fmt.Println(i, value)
@@ -225,6 +225,9 @@ func main() {
 			visited[node] = color
 			index := weights.S[0] * node
 			for i, value := range weights.X[index : index+weights.S[0]] {
+				if value < 0 {
+					value = -value
+				}
 				if value >= cutoff {
 					visit(color, i)
 				}
