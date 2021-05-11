@@ -194,7 +194,58 @@ func main() {
 			fmt.Println(i, value)
 		}
 
-		Process(headers, &data)
+		weights := Process(headers, &data)
+		sorted := make([]float32, 0, weights.S[0]*weights.S[1])
+		for _, value := range weights.X {
+			if value < 0 {
+				value = -value
+			}
+			sorted = append(sorted, value)
+		}
+		sort.Slice(sorted, func(i, j int) bool {
+			return sorted[i] < sorted[j]
+		})
+		cutoff := sorted[0] + (sorted[len(sorted)-1]-sorted[0])*.885
+		for i, value := range sorted {
+			if value >= cutoff {
+				fmt.Println(i, value)
+				break
+			}
+		}
+
+		visited := make([]int, weights.S[1])
+		for i := range visited {
+			visited[i] = -1
+		}
+		var visit func(color, node int)
+		visit = func(color, node int) {
+			if visited[node] >= 0 {
+				return
+			}
+			visited[node] = color
+			index := weights.S[0] * node
+			for i, value := range weights.X[index : index+weights.S[0]] {
+				if value >= cutoff {
+					visit(color, i)
+				}
+			}
+		}
+		for i := 0; i < weights.S[1]; i++ {
+			visit(i, i)
+		}
+
+		colors := make(map[int][]int)
+		for i, value := range visited {
+			list := colors[value]
+			if list == nil {
+				list = make([]int, 0, 8)
+			}
+			list = append(list, i)
+			colors[value] = list
+		}
+		for color, list := range colors {
+			fmt.Println(color, list)
+		}
 	}
 }
 
