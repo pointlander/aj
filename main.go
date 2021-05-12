@@ -163,6 +163,7 @@ func main() {
 		fmt.Println("min", min)
 		width, height := (1<<16)-1, 1
 		buckets := make([]int, width)
+		names := make(map[int]map[string]bool)
 		sum := 0.0
 		for _, flower := range datum.Fisher {
 			var bucket uint16
@@ -172,13 +173,19 @@ func main() {
 				bucket <<= 4
 				bucket |= 1 << int(4*value)
 			}
+			name := names[int(bucket)]
+			if name == nil {
+				name = make(map[string]bool)
+			}
+			name[flower.Label] = true
+			names[int(bucket)] = name
 			buckets[bucket]++
 			sum++
 		}
 		size, table := 0, make(map[int]int)
 		for i, value := range buckets {
 			if value != 0 {
-				table[i] = size
+				table[size] = i
 				size++
 			}
 		}
@@ -205,7 +212,7 @@ func main() {
 		sort.Slice(sorted, func(i, j int) bool {
 			return sorted[i] < sorted[j]
 		})
-		cutoff := sorted[0] + (sorted[len(sorted)-1]-sorted[0])*.93
+		cutoff := sorted[0] + (sorted[len(sorted)-1]-sorted[0])*.99
 		for i, value := range sorted {
 			if value >= cutoff {
 				fmt.Println(i, value)
@@ -247,7 +254,13 @@ func main() {
 			colors[value] = list
 		}
 		for color, list := range colors {
-			fmt.Println(color, list)
+			summary := make(map[string]bool)
+			for _, value := range list {
+				for t := range names[table[value]] {
+					summary[t] = true
+				}
+			}
+			fmt.Println(color, list, summary)
 		}
 	}
 }
